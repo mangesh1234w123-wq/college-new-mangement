@@ -193,3 +193,31 @@ INSERT OR IGNORE INTO courses (id, department_id, faculty_id, name, code, semest
   (3, 1, NULL, 'Operating Systems', 'CSE503', 5, 3),
   (4, 2, NULL, 'Digital Signal Processing', 'ECE501', 5, 4),
   (5, 3, NULL, 'Financial Accounting', 'BBA501', 5, 3);
+
+ // call your API to save metadata: { key, url: public-or-signed-download-url, owner }  await fetch(url, { method: 'PUT', headers: { 'Content-Type': file.type }, body: file });  const { url, key } = await resp.json();  });    body: JSON.stringify({ filename: file.name, contentType: file.type })    headers: { 'Content-Type': 'application/json' },    method: 'POST',  const resp = await fetch('/api/presign', {async function uploadFile(file) {// file: upload.js// api/presign.js
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const { getSignedUrl } = require("@aws-sdk/s3-request-presigner");
+
+const s3 = new S3Client({
+  region: process.env.S3_REGION,
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY_ID,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY
+  }
+});
+
+module.exports = async (req, res) => {
+  const { filename, contentType } = req.body;
+  if (!filename || !contentType) return res.status(400).json({ error: 'missing' });
+
+  const Key = `reports/${Date.now()}-${filename}`;
+  const cmd = new PutObjectCommand({
+    Bucket: process.env.S3_BUCKET,
+    Key,
+    ContentType: contentType,
+    ACL: 'private'
+  });
+
+  const url = await getSignedUrl(s3, cmd, { expiresIn: 3600 });
+  res.json({ url, key: Key });
+};
